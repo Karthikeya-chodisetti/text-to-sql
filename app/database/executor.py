@@ -1,10 +1,10 @@
 from sqlalchemy import text
-from app.database.connection import engine
+from app.database.connection import db_engine
 
 
 def execute_sql(sql: str):
 
-    with engine.connect() as connection:
+    with db_engine.connect() as connection:
 
         result = connection.execute(
             text(sql)
