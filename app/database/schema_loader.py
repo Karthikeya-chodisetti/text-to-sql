@@ -1,6 +1,7 @@
 from sqlalchemy import inspect
 from app.database.connection import db_engine
 
+EXCLUDED_TABLES = { "query_logs" }
 
 def get_database_schema():
 
@@ -13,6 +14,9 @@ def get_database_schema():
 
         for table in tables:
 
+            if table in EXCLUDED_TABLES:
+                continue
+                
             columns = inspector.get_columns(table)
             primary_keys = inspector.get_pk_constraint(table)
             foreign_keys = inspector.get_foreign_keys(table)

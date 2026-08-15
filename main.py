@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from app.database.schema_loader import get_database_schema
 from app.services.text_to_sql_service import answer_question
-
+from app.services.validation_errors import (
+    RequestValidationError, SQLValidationError, SQLExecutionError
+)
 
 app = FastAPI(
     title="Text-to-SQL API",
@@ -23,4 +25,13 @@ class QueryRequest(BaseModel):
 
 @app.post("/generate-sql")
 def generate(request: QueryRequest):
-    return answer_question(request.question)
+
+    try:
+        return answer_question(request.question)
+
+    except ( RequestValidationError, SQLValidationError, SQLExecutionError) as e:
+        raise HTTPException(
+            status_code=400,
+            detail=e.message
+        )
+    

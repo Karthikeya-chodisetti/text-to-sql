@@ -5,7 +5,6 @@ def test_log_query():
 
     log_query(
         user_question="Show all customers",
-        prompt="Generate SQL for: Show all customers",
         schema_snapshot={
             "customers": {
                 "columns": [
@@ -19,7 +18,9 @@ def test_log_query():
         model="gemini-000-turbo-lite",
         generated_sql="SELECT * FROM customers;",
         status="SUCCESS",
-        execution_error=None,
-        execution_time_ms=4.55,
-        row_count=3
+        validation_stage=None,
+        detected_operation=None,
+        error_message=None,
+        execution_time_ms=4.1234567,
+        row_count=0
     )

@@ -6,12 +6,36 @@ from app.database.schema_loader import get_database_schema
 from app.database.query_logger import log_query
 from app.llm.prompt_builder import build_prompt
 from app.llm.gemini_client import generate_sql
-
+from app.services.sql_validator import validate_sql
+from app.services.request_validator import validate_request
+from app.services.validation_errors import (
+    RequestValidationError, SQLValidationError, SQLExecutionError
+)
 
 MODEL_NAME = os.getenv("GEMINI_MODEL")
 
 
 def answer_question(question: str):
+
+    try:
+        validate_request(question)
+
+    except RequestValidationError as e:
+        
+        log_query(
+            user_question=question,
+            schema_snapshot=None,
+            model=None,
+            generated_sql=None,
+            status="REQUEST_VALIDATION_FAILED",
+            validation_stage="REQUEST",
+            detected_operation=e.operation,
+            error_message=e.message,
+            execution_time_ms=0,
+            row_count=0
+        )
+
+        raise
 
     schema = get_database_schema()
 
@@ -31,17 +55,39 @@ def answer_question(question: str):
 
         log_query(
             user_question=question,
-            prompt=prompt,
             schema_snapshot=schema,
             model=MODEL_NAME,
-            generated_sql="",
+            generated_sql=None,
             status="LLM_FAILED",
-            execution_error=str(e),
+            validation_stage=None,
+            detected_operation=None,
+            error_message=str(e),
             execution_time_ms=generation_time_ms,
             row_count=0
         )
 
         raise
+    
+    try:
+        sql = validate_sql(sql)
+
+    except SQLValidationError as e:
+
+        log_query(
+            user_question=question,
+            schema_snapshot=schema,
+            model=MODEL_NAME,
+            generated_sql=sql,
+            status="SQL_VALIDATION_FAILED",
+            validation_stage="SQL",
+            detected_operation=e.operation,
+            error_message=e.message,
+            execution_time_ms=0,
+            row_count=0
+        )
+
+        raise
+
 
     execution_start = time.perf_counter()
 
@@ -53,12 +99,13 @@ def answer_question(question: str):
 
         log_query(
             user_question=question,
-            prompt=prompt,
             schema_snapshot=schema,
             model=MODEL_NAME,
             generated_sql=sql,
             status="SUCCESS",
-            execution_error=None,
+            validation_stage=None,
+            detected_operation=None,
+            error_message=None,
             execution_time_ms=execution_time_ms,
             row_count=len(result)
         )
@@ -75,14 +122,17 @@ def answer_question(question: str):
 
         log_query(
             user_question=question,
-            prompt=prompt,
             schema_snapshot=schema,
             model=MODEL_NAME,
             generated_sql=sql,
-            status="SQL_FAILED",
-            execution_error=str(e),
+            status="EXECUTION_FAILED",
+            validation_stage=None,
+            detected_operation=None,
+            error_message=str(e),
             execution_time_ms=execution_time_ms,
             row_count=0
         )
 
-        raise
+        raise SQLExecutionError(
+            f"SQL execution failed: {str(e)}"
+        )   
