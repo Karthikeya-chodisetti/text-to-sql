@@ -9,8 +9,9 @@ from app.llm.gemini_client import generate_sql
 from app.services.sql_validator import validate_sql
 from app.services.request_validator import validate_request
 from app.services.validation_errors import (
-    RequestValidationError, SQLValidationError, SQLExecutionError
+    RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError
 )
+from app.services.query_guardrails import validate_query_guardrails
 
 MODEL_NAME = os.getenv("GEMINI_MODEL")
 
@@ -88,6 +89,25 @@ def answer_question(question: str):
 
         raise
 
+    try:
+        validate_query_guardrails(sql)
+
+    except QueryGuardrailError as e:
+
+        log_query(
+            user_question=question,
+            schema_snapshot=schema,
+            model=MODEL_NAME,
+            generated_sql=sql,
+            status="QUERY_GUARDRAIL_FAILED",
+            validation_stage="GUARDRAIL",
+            detected_operation=e.guardrail,
+            error_message=e.message,
+            execution_time_ms=0,
+            row_count=0
+        )
+
+        raise
 
     execution_start = time.perf_counter()
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from app.database.schema_loader import get_database_schema
 from app.services.text_to_sql_service import answer_question
 from app.services.validation_errors import (
-    RequestValidationError, SQLValidationError, SQLExecutionError
+    RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError
 )
 
 app = FastAPI(
@@ -29,7 +29,7 @@ def generate(request: QueryRequest):
     try:
         return answer_question(request.question)
 
-    except ( RequestValidationError, SQLValidationError, SQLExecutionError) as e:
+    except ( RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError) as e:
         raise HTTPException(
             status_code=400,
             detail=e.message

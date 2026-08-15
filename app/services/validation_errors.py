@@ -19,3 +19,10 @@ class SQLExecutionError(Exception):
         self.message = message
 
         super().__init__(message)
+
+class QueryGuardrailError(ValueError):
+    def __init__(self, guardrail: str, message: str):
+        self.guardrail = guardrail
+        self.message = message
+
+        super().__init__(message)
