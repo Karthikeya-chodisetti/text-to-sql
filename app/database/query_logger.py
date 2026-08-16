@@ -13,7 +13,8 @@ def log_query(
     detected_operation: str | None,
     error_message: str | None,
     execution_time_ms: float,
-    row_count: int
+    row_count: int,
+    retry_count: int
 ):
 
     query = """
@@ -27,7 +28,8 @@ def log_query(
             detected_operation,
             error_message,
             execution_time_ms,
-            row_count
+            row_count,
+            retry_count
         )
         VALUES (
             :user_question,
@@ -39,7 +41,8 @@ def log_query(
             :detected_operation,
             :error_message,
             :execution_time_ms,
-            :row_count
+            :row_count,
+            :retry_count
         )
     """
 
@@ -62,5 +65,6 @@ def log_query(
                 "error_message": error_message,
                 "execution_time_ms": execution_time_ms,
                 "row_count": row_count,
+                "retry_count": retry_count
             }
         )

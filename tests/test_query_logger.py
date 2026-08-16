@@ -22,5 +22,6 @@ def test_log_query():
         detected_operation=None,
         error_message=None,
         execution_time_ms=4.1234567,
-        row_count=0
+        row_count=0,
+        retry_count=0,
     )

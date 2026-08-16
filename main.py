@@ -1,11 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
 from app.database.schema_loader import get_database_schema
 from app.services.text_to_sql_service import answer_question
-from app.services.validation_errors import (
-    RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError
-)
+from app.services.validation_errors import AppError
 
 app = FastAPI(
     title="Text-to-SQL API",
@@ -27,11 +26,31 @@ class QueryRequest(BaseModel):
 def generate(request: QueryRequest):
 
     try:
-        return answer_question(request.question)
+        res = answer_question(request.question)
 
-    except ( RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError) as e:
-        raise HTTPException(
-            status_code=400,
-            detail=e.message
+        return {
+            "success": True,
+            **res
+        }
+
+    except AppError as e:
+        
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "success": False,
+                "error": e.message
+            }
         )
     
+    except Exception as e:
+
+        print("UNEXPECTED ERROR:", repr(e))
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "An unexpected internal error occurred."
+            }
+        )
