@@ -12,6 +12,7 @@ from app.services.validation_errors import (
     RequestValidationError, SQLValidationError, SQLExecutionError, QueryGuardrailError, LLMError, 
 )
 from app.services.query_guardrails import validate_query_guardrails
+from app.services.result_cache import ( get_cached_result, set_cached_result )
 
 MODEL_NAME = os.getenv("GEMINI_MODEL")
 
@@ -40,6 +41,34 @@ def answer_question(question: str):
 
         raise
 
+    cache_start = time.perf_counter()
+
+    cached_result = get_cached_result(question)
+
+    if cached_result is not None:
+        cache_time_ms = (time.perf_counter() - cache_start)* 1000
+
+        log_query(
+            user_question=question,
+            schema_snapshot=None,
+            model=MODEL_NAME,
+            generated_sql=cached_result["generated_sql"],
+            status="CACHE_HIT",
+            validation_stage="CACHE",
+            detected_operation=None,
+            error_message=None,
+            execution_time_ms=cache_time_ms,
+            row_count=len(cached_result["result"]),
+            retry_count=0
+        )
+        
+        return {
+            "question": cached_result["question"],
+            "sql": cached_result["generated_sql"],
+            "result": cached_result["result"],
+            "cached": True
+        }
+
     schema = get_database_schema()
 
     prompt = build_prompt(
@@ -52,7 +81,7 @@ def answer_question(question: str):
     try:
         sql = generate_sql(prompt)
         # sql = "SELECT cust_id FROM customers;"
-        
+
     except Exception as e:
 
         generation_time_ms = (time.perf_counter() - generation_start) * 1000
@@ -154,6 +183,12 @@ def answer_question(question: str):
 
             result = execute_sql(sql)
 
+            set_cached_result(
+                question=question,
+                generated_sql=sql,
+                result=result
+            )
+
             execution_time_ms = (
                 time.perf_counter() - execution_start
             ) * 1000
@@ -175,7 +210,8 @@ def answer_question(question: str):
             return {
                 "question": question,
                 "sql": sql,
-                "result": result
+                "result": result,
+                "cached": False
             }
 
         except Exception as e:
@@ -322,51 +358,3 @@ def answer_question(question: str):
                 )
 
                 raise
-
-    # execution_start = time.perf_counter()
-
-    # try:
-
-    #     result = execute_sql(sql)
-
-    #     execution_time_ms = (time.perf_counter() - execution_start) * 1000
-
-    #     log_query(
-    #         user_question=question,
-    #         schema_snapshot=schema,
-    #         model=MODEL_NAME,
-    #         generated_sql=sql,
-    #         status="SUCCESS",
-    #         validation_stage=None,
-    #         detected_operation=None,
-    #         error_message=None,
-    #         execution_time_ms=execution_time_ms,
-    #         row_count=len(result)
-    #     )
-
-    #     return {
-    #         "question": question,
-    #         "sql": sql,
-    #         "result": result
-    #     }
-
-    # except Exception as e:
-
-    #     execution_time_ms = (time.perf_counter() - execution_start) * 1000
-
-    #     log_query(
-    #         user_question=question,
-    #         schema_snapshot=schema,
-    #         model=MODEL_NAME,
-    #         generated_sql=sql,
-    #         status="EXECUTION_FAILED",
-    #         validation_stage=None,
-    #         detected_operation=None,
-    #         error_message=str(e),
-    #         execution_time_ms=execution_time_ms,
-    #         row_count=0
-    #     )
-
-    #     raise SQLExecutionError(
-    #         "SQL execution failed. Please check your request and try again."
-    #     )

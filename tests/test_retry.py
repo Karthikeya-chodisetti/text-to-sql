@@ -4,7 +4,10 @@ import pytest
 
 from app.services.text_to_sql_service import answer_question
 from app.services.validation_errors import SQLExecutionError
+from app.services.result_cache import clear_cache
 
+def setup_function():
+    clear_cache()
 
 @patch("app.services.text_to_sql_service.log_query")
 @patch("app.services.text_to_sql_service.execute_sql")

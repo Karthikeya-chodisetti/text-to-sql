@@ -3,7 +3,10 @@ from unittest.mock import patch
 
 from app.services.text_to_sql_service import answer_question
 from app.services.validation_errors import SQLValidationError
+from app.services.result_cache import clear_cache
 
+def setup_function():
+    clear_cache()
 
 @patch("app.services.text_to_sql_service.execute_sql")
 @patch(
