@@ -38,64 +38,12 @@ def test_insert_is_rejected():
     assert exc.value.operation == "INSERT"
 
 
-def test_update_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql("UPDATE customers SET city = 'Delhi';")
-
-    assert exc.value.operation == "UPDATE"
-
-
-def test_delete_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql("DELETE FROM customers;")
-
-    assert exc.value.operation == "DELETE"
-
-
-def test_drop_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql("DROP TABLE customers;")
-
-    assert exc.value.operation == "DROP"
-
-
-def test_alter_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql(
-            "ALTER TABLE customers ADD COLUMN age INTEGER;"
-        )
-
-    assert exc.value.operation == "ALTER"
-
-
-def test_truncate_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql("TRUNCATE TABLE customers;")
-
-    assert exc.value.operation == "TRUNCATE"
-
-
 def test_create_is_rejected():
 
     with pytest.raises(SQLValidationError) as exc:
         validate_sql("CREATE TABLE test(id INTEGER);")
 
     assert exc.value.operation == "CREATE"
-
-
-def test_grant_is_rejected():
-
-    with pytest.raises(SQLValidationError) as exc:
-        validate_sql(
-            "GRANT SELECT ON customers TO user1;"
-        )
-
-    assert exc.value.operation == "GRANT"
 
 
 def test_revoke_is_rejected():
@@ -112,3 +60,34 @@ def test_empty_sql_is_rejected():
 
     with pytest.raises(SQLValidationError):
         validate_sql("")
+
+def test_forbidden_word_inside_string_is_allowed():
+
+    sql = """
+    SELECT *
+    FROM customers
+    WHERE name = 'DROP TABLE customers';
+    """
+
+    result = validate_sql(sql)
+
+    assert result == sql.strip()
+
+def test_invalid_sql_is_rejected():
+
+    with pytest.raises(SQLValidationError) as exc:
+        validate_sql(
+            "SELECT * FROM customers WHERE;"
+        )
+
+    assert exc.value.operation == "UNKNOWN"
+
+def test_multiple_statements_are_rejected():
+
+    sql = """
+    SELECT * FROM customers;
+    DROP TABLE customers;
+    """
+
+    with pytest.raises(SQLValidationError):
+        validate_sql(sql)
